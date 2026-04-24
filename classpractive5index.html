@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLITI-GOLD | 政治獻金透明化查詢系統</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        /* --- CSS 樣式區 (YSL 輕奢風格) --- */
+        :root {
+            --black: #000000;
+            --gold: #D4AF37; 
+            --gold-dark: #B8860B;
+            --white: #FFFFFF;
+            --light-gray: #F9F9F9;
+            --border-color: #E0E0E0;
+            --font-serif: 'Playfair Display', serif;
+            --font-sans: 'Montserrat', 'PingFang TC', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--white);
+            color: var(--black);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+        /* Navigation */
+        .navbar {
+            display: flex;
+            justify-content: center;
+            padding: 40px 0;
+            position: absolute;
+            width: 100%;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: var(--font-serif);
+            font-size: 1.8rem;
+            letter-spacing: 8px;
+            color: var(--gold);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            background-color: var(--black);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--white);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content { max-width: 900px; z-index: 2; padding: 0 20px; }
+
+        .hero-content h1 {
+            font-family: var(--font-serif);
+            font-size: clamp(3rem, 8vw, 5rem);
+            line-height: 1.1;
+            margin-bottom: 25px;
+            letter-spacing: -1px;
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        .subtitle {
+            font-weight: 300;
+            color: #888;
+            font-size: 1.1rem;
+            margin-bottom: 50px;
+            letter-spacing: 2px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* 搜尋入口 CTA */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        .search-box {
+            display: flex;
+            border: 1px solid var(--gold);
+            padding: 5px;
+            transition: all 0.4s;
+        }
+        
+        .search-box:focus-within {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+        }
+
+        .search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 15px 20px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            font-family: var(--font-sans);
+        }
+
+        .btn-gold {
+            background-color: var(--gold);
+            border: none;
+            padding: 0 40px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.4s ease;
+            color: black;
+            text-transform: uppercase;
+        }
+
+        .btn-gold:hover { background-color: var(--white); }
+
+        .sample-queries { margin-top: 20px; }
+        .tag {
+            background: transparent;
+            border: 1px solid #333;
+            color: #999;
+            padding: 6px 18px;
+            font-size: 0.75rem;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tag:hover { border-color: var(--gold); color: var(--gold); }
+
+        /* Editor's Picks */
+        .editor-picks { padding: 120px 0; background: var(--white); }
+        .section-title {
+            text-align: center;
+            font-family: var(--font-serif);
+            font-size: 2.5rem;
+            letter-spacing: 5px;
+            margin-bottom: 70px;
+            text-transform: uppercase;
+        }
+
+        .picks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .pick-card { cursor: pointer; group; }
+        .img-box { height: 450px; overflow: hidden; margin-bottom: 25px; background: #111; }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; transition: 1.2s cubic-bezier(0.2, 1, 0.3, 1); filter: grayscale(30%); }
+        .pick-card:hover img { transform: scale(1.05); filter: grayscale(0%); }
+        .pick-label { color: var(--gold); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; display: block; margin-bottom: 10px; }
+        .pick-card h3 { font-family: var(--font-serif); font-size: 1.8rem; }
+
+        /* Results List Area */
+        .results-area { padding: 100px 0; border-top: 1px solid #eee; }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--black);
+            padding-bottom: 20px;
+        }
+        .results-header h2 { font-family: var(--font-serif); font-size: 2rem; }
+
+        /* Quick Summary */
+        .quick-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+        .summary-card {
+            background: var(--light-gray);
+            padding: 40px;
+            border-left: 5px solid var(--gold);
+        }
+        .summary-card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 15px; display: block; }
+        .summary-card .value { font-family: var(--font-serif); font-size: 2.2rem; font-weight: 700; }
+
+        /* Data Table */
+        .table-responsive { overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .data-table th { text-align: left; padding: 20px; font-size: 0.7rem; color: #aaa; text-transform: uppercase; border-bottom: 1px solid #eee; }
+        .data-table td { padding: 25px 20px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+        .td-name { font-weight: 700; font-size: 1.1rem; }
+        .td-amount { font-family: var(--font-serif); font-weight: 700; color: var(--gold-dark); }
+        .party-chip { font-size: 0.7rem; border: 1px solid #ddd; padding: 4px 10px; letter-spacing: 1px; }
+
+        /* Pagination */
+        .pagination { margin-top: 60px; text-align: center; }
+        .pagination button {
+            background: none; border: none; margin: 0 15px; font-weight: 700;
+            font-size: 0.8rem; cursor: pointer; transition: 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .pagination button.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+        .footer { background: var(--black); color: #555; padding: 80px 0; text-align: center; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 1000; display: flex; align-items: center; justify-content: center;
+            color: var(--gold); font-family: var(--font-serif); letter-spacing: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">LOADING DATA...</div>
+
+    <nav class="navbar">
+        <div class="logo">Politi-Gold</div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>權力的代價<br>由你審視</h1>
+            <p class="subtitle">讓隱藏在數據中的權力金流浮出水面。我們以極致的透明度，重新定義公民參與的深度。</p>
+            
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="mainSearch" placeholder="輸入候選人或政黨名稱...">
+                    <button class="btn-gold" onclick="performSearch()">Search</button>
+                </div>
+                <div class="sample-queries">
+                    <button class="tag" onclick="quickFill('柯建銘')">柯建銘</button>
+                    <button class="tag" onclick="quickFill('邱志偉')">邱志偉</button>
+                    <button class="tag" onclick="quickFill('民主進步黨')">民主進步黨</button>
+                    <button class="tag" onclick="quickFill('中國國民黨')">中國國民黨</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="editor-picks">
+        <div class="container">
+            <h2 class="section-title">Editor’s Picks</h2>
+            <div class="picks-grid">
+                <div class="pick-card" onclick="quickFill('邱志偉')">
+                    <div class="img-box">
+                        <img src="https://images.unsplash.com/photo-1575328630189-440449ed8cd1?auto=format&fit=crop&w=800&q=80" alt="Special Report 1">
+                    </div>
+                    <span class="pick-label">Insight</span>
+                    <h3>營利事業捐贈最高者分析</h3>
+                </div>
+                <div class="pick-card" onclick="quickFill('柯建銘')">
+                    <div class="img-box">
+                        <img src="https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=800&q=80" alt="Special Report 2">
+                    </div>
+                    <span class="pick-label">Case Study</span>
+                    <h3>資深立委與企業金流的交匯點</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="results-area" id="resultsSection">
+        <div class="container">
+            <div class="results-header">
+                <h2>查詢結果 <small style="font-size: 0.8rem; color: #999; font-weight: 300;">/ RESULTS</small></h2>
+                <div class="sorting">
+                    <select id="sortOrder" onchange="processAndRender()" style="padding: 10px; border: 1px solid #ddd; font-family: var(--font-sans);">
+                        <option value="total_desc">總收入：高至低</option>
+                        <option value="total_asc">總收入：低至高</option>
+                        <option value="ratio_desc">營利事業比例：高至低</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="quick-summary" id="summaryContainer">
+                </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>姓名</th>
+                            <th>政黨</th>
+                            <th>地區</th>
+                            <th>總收入</th>
+                            <th>營利事業比例</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button class="active">01</button>
+                <button>02</button>
+                <button>03</button>
+                <span>...</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="logo" style="font-size: 1rem; margin-bottom: 20px;">Politi-Gold</div>
+        <p>© 2024 高端政治數據分析專案. 數據源自監察院公開資料.</p>
+    </footer>
+
+    <script>
+        let allData = [];
+        let displayData = [];
+
+        // 1. 初始化讀取同檔案夾的 CSV
+        window.addEventListener('DOMContentLoaded', () => {
+            Papa.parse("A05_basic_all.csv", {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    allData = results.data;
+                    displayData = [...allData];
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    processAndRender();
+                },
+                error: function() {
+                    alert("無法載入 A05_basic_all.csv，請確保檔案在同個目錄下並使用伺服器開啟。");
+                    document.getElementById('loading-overlay').innerText = "ERROR LOADING DATA";
+                }
+            });
+        });
+
+        // 2. 搜尋與過濾邏輯
+        function performSearch() {
+            const query = document.getElementById('mainSearch').value.trim();
+            if (query === "") {
+                displayData = [...allData];
+            } else {
+                displayData = allData.filter(item => 
+                    item.姓名.includes(query) || 
+                    (item.推薦政黨 && item.推薦政黨.includes(query))
+                );
+            }
+            processAndRender();
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function quickFill(val) {
+            document.getElementById('mainSearch').value = val;
+            performSearch();
+        }
+
+        // 3. 處理排序與渲染
+        function processAndRender() {
+            const sortVal = document.getElementById('sortOrder').value;
+            const tbody = document.getElementById('tableBody');
+            
+            // 排序邏輯
+            displayData.sort((a, b) => {
+                const numA = parseFloat(a['總收入']?.replace(/,/g, '') || 0);
+                const numB = parseFloat(b['總收入']?.replace(/,/g, '') || 0);
+                const ratA = parseFloat(a['營利事業捐贈比例']?.replace('%', '') || 0);
+                const ratB = parseFloat(b['營利事業捐贈比例']?.replace('%', '') || 0);
+
+                if (sortVal === 'total_desc') return numB - numA;
+                if (sortVal === 'total_asc') return numA - numB;
+                if (sortVal === 'ratio_desc') return ratB - ratA;
+            });
+
+            // 渲染表格 (僅顯示前 15 筆模擬分頁)
+            const showData = displayData.slice(0, 15);
+            tbody.innerHTML = showData.map(row => `
+                <tr>
+                    <td class="td-name">${row.姓名}</td>
+                    <td><span class="party-chip">${row.推薦政黨 || '無'}</span></td>
+                    <td>${row.地區}</td>
+                    <td class="td-amount">$${row.總收入}</td>
+                    <td>${row.營利事業捐贈比例}</td>
+                    <td><button style="background: none; border: 1px solid black; padding: 5px 15px; cursor: pointer; font-size: 0.7rem;">VIEW</button></td>
+                </tr>
+            `).join('');
+
+            updateSummary();
+        }
+
+        // 4. 更新關鍵數據 Summary
+        function updateSummary() {
+            const container = document.getElementById('summaryContainer');
+            if (displayData.length === 0) {
+                container.innerHTML = `<p>查無相關數據</p>`;
+                return;
+            }
+
+            const totalAmount = displayData.reduce((acc, curr) => acc + parseFloat(curr['總收入']?.replace(/,/g, '') || 0), 0);
+            const avgAmount = totalAmount / displayData.length;
+            const maxRatio = Math.max(...displayData.map(d => parseFloat(d['營利事業捐贈比例']?.replace('%', '') || 0)));
+
+            container.innerHTML = `
+                <div class="summary-card">
+                    <span class="label">查詢結果總數</span>
+                    <span class="value">${displayData.length}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="label">平均政治獻金收入</span>
+                    <span class="value">$${Math.round(avgAmount).toLocaleString()}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="label">企業捐贈最高比例</span>
+                    <span class="value">${maxRatio}%</span>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
